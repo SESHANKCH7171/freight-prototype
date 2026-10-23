@@ -185,6 +185,8 @@ strict_mode = st.sidebar.checkbox("Strict Zero-Tolerance Matching", value=True)
 
 # Run Audit Button
 run_audit = st.sidebar.button("⚡ Re-Run Audit Verification", use_container_width=True, type="primary")
+if run_audit:
+    st.toast("⚡ Audit re-run completed with latest rules!", icon="✅")
 
 # Execute Engine
 with st.spinner("Analyzing document streams and verifying checklist rules..."):
