@@ -1,0 +1,97 @@
+{
+  "notice": "All records are invented for software testing. These results are expected under FIELD_CHECKLIST.md only, not actual shipping or customs determinations.",
+  "global_checks": [
+    {
+      "id": "CHK-ARITHMETIC-001",
+      "rule": "Invoice quantity x unit value equals line total",
+      "expected": "PASS in all six cases"
+    },
+    {
+      "id": "CHK-INVOICE-REF-002",
+      "rule": "Packing list invoice reference equals commercial invoice number",
+      "expected": "PASS except CASE-04-INVOICE-REF-MISMATCH"
+    },
+    {
+      "id": "CHK-CONSIGNEE-003",
+      "rule": "AWB consignee matches invoice/packing-list consignee, when present",
+      "expected": "FLAG in CASE-05-CONSIGNEE-MISMATCH; MISSING_FIELD in CASE-06-MISSING-CONSIGNEE"
+    },
+    {
+      "id": "CHK-PIECES-004",
+      "rule": "For this synthetic scenario only, packing-list cartons equal AWB pieces",
+      "expected": "FLAG in CASE-03-PIECES-MISMATCH"
+    },
+    {
+      "id": "CHK-GROSS-WEIGHT-005",
+      "rule": "Packing-list gross weight equals AWB gross weight",
+      "expected": "FLAG in CASE-02-WEIGHT-MISMATCH"
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "CASE-01-CLEAN",
+      "folder": "case_01_clean",
+      "purpose": "Baseline: the configured comparison checks should pass.",
+      "expected_outcome": "PASS",
+      "checks_expected_to_flag": [
+        "CHK-ARITHMETIC-001"
+      ],
+      "all_other_configured_checks": "PASS"
+    },
+    {
+      "case_id": "CASE-02-WEIGHT-MISMATCH",
+      "folder": "case_02_weight_mismatch",
+      "purpose": "The AWB gross weight differs from the packing list.",
+      "expected_outcome": "FLAG_WEIGHT_MISMATCH",
+      "checks_expected_to_flag": [
+        "CHK-ARITHMETIC-001",
+        "CHK-GROSS-WEIGHT-005"
+      ],
+      "all_other_configured_checks": "PASS"
+    },
+    {
+      "case_id": "CASE-03-PIECES-MISMATCH",
+      "folder": "case_03_package_count_mismatch",
+      "purpose": "The packing list declares 12 cartons; the AWB declares 11 pieces. For this synthetic test only, 1 carton is expected to equal 1 AWB piece.",
+      "expected_outcome": "FLAG_PACKAGE_COUNT_MISMATCH",
+      "checks_expected_to_flag": [
+        "CHK-ARITHMETIC-001",
+        "CHK-PIECES-004"
+      ],
+      "all_other_configured_checks": "PASS"
+    },
+    {
+      "case_id": "CASE-04-INVOICE-REF-MISMATCH",
+      "folder": "case_04_invoice_reference_mismatch",
+      "purpose": "The packing list cites a different invoice number from the invoice in the packet.",
+      "expected_outcome": "FLAG_INVOICE_REFERENCE_MISMATCH",
+      "checks_expected_to_flag": [
+        "CHK-ARITHMETIC-001",
+        "CHK-INVOICE-REF-002"
+      ],
+      "all_other_configured_checks": "PASS"
+    },
+    {
+      "case_id": "CASE-05-CONSIGNEE-MISMATCH",
+      "folder": "case_05_consignee_mismatch",
+      "purpose": "The AWB consignee differs from the invoice and packing list consignee.",
+      "expected_outcome": "FLAG_CONSIGNEE_MISMATCH",
+      "checks_expected_to_flag": [
+        "CHK-ARITHMETIC-001",
+        "CHK-CONSIGNEE-003:FLAG"
+      ],
+      "all_other_configured_checks": "PASS"
+    },
+    {
+      "case_id": "CASE-06-MISSING-CONSIGNEE",
+      "folder": "case_06_missing_consignee",
+      "purpose": "The AWB consignee field is blank and should be escalated for human review.",
+      "expected_outcome": "FLAG_MISSING_REQUIRED_FIELD",
+      "checks_expected_to_flag": [
+        "CHK-ARITHMETIC-001",
+        "CHK-CONSIGNEE-003:MISSING_FIELD"
+      ],
+      "all_other_configured_checks": "PASS"
+    }
+  ]
+}

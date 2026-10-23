@@ -1,0 +1,76 @@
+{
+  "notice": "Synthetic ground truth for the provided fictional PDFs. For this test pack only; not a shipping/customs determination.",
+  "common_expected_fields": {
+    "shipment_reference": "DEMO-SHP-1001",
+    "invoice_number": "DEMO-INV-1001",
+    "shipper_name": "DEMO CARGO ELECTRONICS FZE",
+    "shipper_address": "Building DEMO-14, Example Industrial Area, Dubai, UAE",
+    "invoice_consignee_name": "NORTHSTAR SAMPLE RETAIL LTD",
+    "invoice_consignee_address": "Unit 5, Example Business Park, London, UK",
+    "goods_description": "LED control modules - fictional, non-hazardous demo cargo",
+    "invoice_quantity": 240,
+    "invoice_unit_value_usd": 25.0,
+    "invoice_line_total_usd": 6000.0,
+    "packing_list_quantity": 240,
+    "packing_list_package_count_cartons": 12,
+    "packing_list_net_weight_kg": 180,
+    "packing_list_gross_weight_kg": 245,
+    "awb_reference": "DEMO-AWB-1001",
+    "awb_origin": "Dubai, UAE (DXB)",
+    "awb_destination": "London, UK (LHR)"
+  },
+  "case_overrides": {
+    "CASE-01-CLEAN": {
+      "packing_list_invoice_reference": "DEMO-INV-1001",
+      "awb_consignee_name": "NORTHSTAR SAMPLE RETAIL LTD",
+      "awb_piece_count": 12,
+      "awb_gross_weight_kg": 245,
+      "expected_flags": []
+    },
+    "CASE-02-WEIGHT-MISMATCH": {
+      "packing_list_invoice_reference": "DEMO-INV-1001",
+      "awb_consignee_name": "NORTHSTAR SAMPLE RETAIL LTD",
+      "awb_piece_count": 12,
+      "awb_gross_weight_kg": 254,
+      "expected_flags": [
+        "CHK-GROSS-WEIGHT-005"
+      ]
+    },
+    "CASE-03-PIECES-MISMATCH": {
+      "packing_list_invoice_reference": "DEMO-INV-1001",
+      "awb_consignee_name": "NORTHSTAR SAMPLE RETAIL LTD",
+      "awb_piece_count": 11,
+      "awb_gross_weight_kg": 245,
+      "expected_flags": [
+        "CHK-PIECES-004"
+      ]
+    },
+    "CASE-04-INVOICE-REF-MISMATCH": {
+      "packing_list_invoice_reference": "DEMO-INV-1099",
+      "awb_consignee_name": "NORTHSTAR SAMPLE RETAIL LTD",
+      "awb_piece_count": 12,
+      "awb_gross_weight_kg": 245,
+      "expected_flags": [
+        "CHK-INVOICE-REF-002"
+      ]
+    },
+    "CASE-05-CONSIGNEE-MISMATCH": {
+      "packing_list_invoice_reference": "DEMO-INV-1001",
+      "awb_consignee_name": "ORBIT SAMPLE IMPORTS LTD",
+      "awb_piece_count": 12,
+      "awb_gross_weight_kg": 245,
+      "expected_flags": [
+        "CHK-CONSIGNEE-003"
+      ]
+    },
+    "CASE-06-MISSING-CONSIGNEE": {
+      "packing_list_invoice_reference": "DEMO-INV-1001",
+      "awb_consignee_name": "",
+      "awb_piece_count": 12,
+      "awb_gross_weight_kg": 245,
+      "expected_flags": [
+        "CHK-CONSIGNEE-003:MISSING_FIELD"
+      ]
+    }
+  }
+}
