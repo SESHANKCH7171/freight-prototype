@@ -98,29 +98,7 @@ st.markdown("""
 # App Directory
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Header
-st.markdown("""
-<div class="main-header">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div>
-            <div style="font-size: 26px; font-weight: 800; letter-spacing: -0.02em;">
-                ✈️ AI Documentation Executive
-            </div>
-            <div style="font-size: 14px; opacity: 0.85; margin-top: 4px;">
-                Intelligent Freight Audit & Cross-Document Verification Engine (CI vs PL vs AWB)
-            </div>
-        </div>
-        <div style="text-align: right;">
-            <span class="badge-chip badge-pass">Synthetic Test Pack 1.0</span>
-            <div style="font-size: 11px; opacity: 0.7; margin-top: 6px;">
-                Client: SESHANK AI LABS | Dubai - London Corridor
-            </div>
-        </div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# Sidebar Configuration
+# Sidebar Configuration (Inputs defined first for dynamic reactive header)
 st.sidebar.markdown("### 🛠️ Ingestion & Test Cases")
 
 scenario = st.sidebar.selectbox(
@@ -136,6 +114,44 @@ scenario = st.sidebar.selectbox(
     ],
     index=0
 )
+
+# TMS Settings
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🏢 TMS Dispatch Gateway")
+tms_target = st.sidebar.selectbox(
+    "Target Freight TMS",
+    ["CargoWise One (WiseTech)", "Descartes OneView", "SAP Transportation Mgmt", "Magaya Live TMS"],
+    index=0
+)
+strict_mode = st.sidebar.checkbox("Strict Zero-Tolerance Matching", value=True)
+
+# Run Audit Button
+run_audit = st.sidebar.button("⚡ Re-Run Audit Verification", use_container_width=True, type="primary")
+if run_audit:
+    st.toast("⚡ Audit re-run completed with latest rules!", icon="✅")
+
+# Header with Dynamic TMS Target Badge
+st.markdown(f"""
+<div class="main-header">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <div style="font-size: 26px; font-weight: 800; letter-spacing: -0.02em;">
+                ✈️ AI Documentation Executive
+            </div>
+            <div style="font-size: 14px; opacity: 0.85; margin-top: 4px;">
+                Intelligent Freight Audit & Cross-Document Verification Engine (CI vs PL vs AWB)
+            </div>
+        </div>
+        <div style="text-align: right;">
+            <span class="badge-chip badge-pass" style="background-color: rgba(3, 105, 161, 0.35); border-color: #38bdf8; color: #e0f2fe;">Connected: {tms_target.split(' ')[0]} API</span>
+            <span class="badge-chip badge-pass">Synthetic Pack 1.0</span>
+            <div style="font-size: 11px; opacity: 0.7; margin-top: 6px;">
+                Client: SESHANK AI LABS | Dubai - London Corridor
+            </div>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 # Custom Upload Handles
 inv_file_path = None
@@ -173,20 +189,6 @@ else:
     elif "CASE-06" in scenario:
         case_overrides = {"air_waybill": {"consignee_name": ""}}
 
-# TMS Settings
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 🏢 TMS Dispatch Gateway")
-tms_target = st.sidebar.selectbox(
-    "Target Freight TMS",
-    ["CargoWise One (WiseTech)", "Descartes OneView", "SAP Transportation Mgmt", "Magaya Live TMS"],
-    index=0
-)
-strict_mode = st.sidebar.checkbox("Strict Zero-Tolerance Matching", value=True)
-
-# Run Audit Button
-run_audit = st.sidebar.button("⚡ Re-Run Audit Verification", use_container_width=True, type="primary")
-if run_audit:
-    st.toast("⚡ Audit re-run completed with latest rules!", icon="✅")
 
 # Execute Engine
 with st.spinner("Analyzing document streams and verifying checklist rules..."):
@@ -264,7 +266,7 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "🚨 Discrepancy & Flag Review",
     "📊 Cross-Document Comparison Matrix",
     "📑 Extracted Document Inspector",
-    "🚀 Export & TMS Dispatch"
+    f"🚀 Export & TMS Dispatch ({tms_target.split(' ')[0]})"
 ])
 
 # Tab 1: Flag Review (HITL)
@@ -410,15 +412,129 @@ with tab3:
         st.markdown("#### ✈️ Air Waybill")
         st.json({k: v for k, v in awb.items() if k != "raw_text"})
 
-# Tab 4: Export & TMS Dispatch
-with tab4:
-    st.markdown("### 🚀 Dispatch Gateway & TMS Export")
-    st.write(f"Prepare and dispatch the audited freight packet directly to **{tms_target}**.")
+    # TMS Specific Metadata & Payload Mapping
+    tms_configs = {
+        "CargoWise One (WiseTech)": {
+            "protocol": "eAdaptor Web Service (SOAP/HTTPS)",
+            "format": "xml",
+            "endpoint": "https://api.cargowise.com/eAdaptor/v1/UniversalShipment",
+            "standard": "CargoWise Universal XML (IATA eDocs)",
+            "prefix": "CW-DXB-",
+            "payload": f"""<UniversalShipment xmlns="http://www.cargowise.com/Schemas/Universal/2011/11">
+  <Shipment>
+    <DataContext>
+      <Company>DEMO CARGO ELECTRONICS FZE</Company>
+      <EnterpriseID>DXB-FORWARDING-01</EnterpriseID>
+      <ServerID>CW-PROD-UAE</ServerID>
+    </DataContext>
+    <OrderNumber>{inv.get('shipment_reference')}</OrderNumber>
+    <CommercialInvoiceNumber>{inv.get('invoice_number')}</CommercialInvoiceNumber>
+    <AWBNumber>{awb.get('awb_number')}</AWBNumber>
+    <ShipperName>{inv.get('shipper_name')}</ShipperName>
+    <ConsigneeName>{awb.get('consignee_name')}</ConsigneeName>
+    <TotalPieces>{awb.get('piece_count')}</TotalPieces>
+    <GrossWeight Unit="KG">{awb.get('gross_weight_kg')}</GrossWeight>
+    <DeclaredValue Currency="USD">{inv.get('line_total_usd')}</DeclaredValue>
+    <CustomsStatus>PRE_CLEARED_BY_AI_EXECUTIVE</CustomsStatus>
+  </Shipment>
+</UniversalShipment>"""
+        },
+        "Descartes OneView": {
+            "protocol": "Descartes Global Logistics Network (GLN / MQ)",
+            "format": "xml",
+            "endpoint": "https://gln.descartes.com/messaging/v2/eAWB/XFWB",
+            "standard": "IATA Cargo-XML (XFWB Edition 4.0)",
+            "prefix": "DESC-GLN-",
+            "payload": f"""<?xml version="1.0" encoding="UTF-8"?>
+<IATA:XFWB xmlns:IATA="iata:cargo:xfwb:4">
+  <IATA:BusinessHeader>
+    <IATA:MessageIdentifier>XFWB</IATA:MessageIdentifier>
+    <IATA:DocumentReference>{awb.get('awb_number')}</IATA:DocumentReference>
+    <IATA:OriginAirportCode>DXB</IATA:OriginAirportCode>
+    <IATA:DestinationAirportCode>LHR</IATA:DestinationAirportCode>
+  </IATA:BusinessHeader>
+  <IATA:MasterAirWaybill>
+    <IATA:ConsignmentTotalQuantity>{awb.get('piece_count')}</IATA:ConsignmentTotalQuantity>
+    <IATA:GrossWeightMeasure unitCode="KGM">{awb.get('gross_weight_kg')}</IATA:GrossWeightMeasure>
+    <IATA:ConsignorParty>{inv.get('shipper_name')}</IATA:ConsignorParty>
+    <IATA:ConsigneeParty>{awb.get('consignee_name')}</IATA:ConsigneeParty>
+    <IATA:CustomsValidationStatus>PASSED_CHECKLIST</IATA:CustomsValidationStatus>
+  </IATA:MasterAirWaybill>
+</IATA:XFWB>"""
+        },
+        "SAP Transportation Mgmt": {
+            "protocol": "SAP NetWeaver Gateway (OData REST v4 / RFC)",
+            "format": "json",
+            "endpoint": "https://s4hana.enterprise.internal/sap/opu/odata4/tm/freight_order/v0001",
+            "standard": "SAP TM FreightOrder OData EntitySet",
+            "prefix": "SAP-FO-",
+            "payload": json.dumps({
+                "@odata.context": "$metadata#FreightOrder/$entity",
+                "FreightOrder": f"FO-{inv.get('shipment_reference')}",
+                "TransportationPlanningStatus": "PLANNED",
+                "ConsignmentOrder": {
+                    "Shipper": inv.get("shipper_name"),
+                    "Consignee": awb.get("consignee_name"),
+                    "DepartureLocation": "DXB",
+                    "ArrivalLocation": "LHR"
+                },
+                "FreightUnits": [
+                    {
+                        "PackageType": "Carton",
+                        "PackageQuantity": awb.get("piece_count"),
+                        "GrossWeight": awb.get("gross_weight_kg"),
+                        "WeightUnit": "KG",
+                        "DeclaredValueUSD": inv.get("line_total_usd")
+                    }
+                ],
+                "AI_VerificationEngine": {
+                    "AuditVerdict": audit_data["status"],
+                    "PassedRules": f"{audit_data['passed_checks']}/{audit_data['total_checks']}",
+                    "Status": "CLEARED_FOR_CARRIER_TENDER"
+                }
+            }, indent=2)
+        },
+        "Magaya Live TMS": {
+            "protocol": "Magaya Cloud REST API (OAuth 2.0 / HTTPS)",
+            "format": "json",
+            "endpoint": "https://api.magayacloud.com/v1/shipments/air-waybills",
+            "standard": "Magaya Logistics Object Model (LOM JSON)",
+            "prefix": "MAG-WR-",
+            "payload": json.dumps({
+                "ObjectType": "AirWaybill",
+                "AWBNumber": awb.get("awb_number"),
+                "ShipperGUID": "CUST-DEMO-ELECTRONICS-UAE",
+                "ConsigneeName": awb.get("consignee_name"),
+                "ShipmentMode": "Air",
+                "Routing": {
+                    "Origin": "Dubai (DXB)",
+                    "Destination": "London (LHR)",
+                    "Carrier": "Example Air Cargo"
+                },
+                "PackageDetails": {
+                    "Pieces": awb.get("piece_count"),
+                    "Packaging": "Cartons",
+                    "GrossWeightKg": awb.get("gross_weight_kg"),
+                    "NetWeightKg": pl.get("net_weight_kg")
+                },
+                "InvoiceDetails": {
+                    "InvoiceNumber": inv.get("invoice_number"),
+                    "TotalAmountUSD": inv.get("line_total_usd")
+                },
+                "ComplianceCheck": "VERIFIED_100%"
+            }, indent=2)
+        }
+    }
     
-    col_e1, col_e2 = st.columns(2)
+    selected_cfg = tms_configs[tms_target]
+    
+    st.markdown("### 🚀 Dispatch Gateway & TMS Export")
+    st.write(f"Active Protocol: **{selected_cfg['protocol']}** | Standard: **`{selected_cfg['standard']}`**")
+    
+    col_e1, col_e2 = st.columns([1.2, 1.8])
     
     with col_e1:
-        st.markdown("#### Download Audit Artifacts")
+        st.markdown("#### 1. Download Audit Artifacts")
         audit_json_str = json.dumps(audit_data, indent=2)
         st.download_button(
             "📥 Download Audit Report (JSON)",
@@ -428,12 +544,12 @@ with tab4:
             use_container_width=True
         )
         
-        # Simple Markdown Generation
         md_report = f"""# Shipment Audit Report - {inv.get('shipment_reference')}
 - Verdict: {audit_data['status']}
 - Date: 2026-10-23
 - Discrepancies: {len(flags)}
 - Checks: {audit_data['passed_checks']}/{audit_data['total_checks']} Passed
+- Destination TMS: {tms_target} ({selected_cfg['standard']})
 """
         st.download_button(
             "📥 Download Audit Report (Markdown)",
@@ -443,22 +559,32 @@ with tab4:
             use_container_width=True
         )
         
-    with col_e2:
-        st.markdown("#### Push to TMS")
+        st.markdown("<hr style='margin: 16px 0;'>", unsafe_allow_html=True)
+        st.markdown(f"#### 2. Transmit to **{tms_target.split(' ')[0]}**")
+        
         if not is_passed and len([d for d in st.session_state["operator_decisions"].values() if "Approved" in d]) < len(flags):
-            st.warning("⚠️ Unresolved flags present! All discrepancies must be approved by an operator before TMS dispatch.")
+            st.warning("⚠️ **Unresolved Flags Present**: In freight compliance, all discrepancies must be approved by an operator before TMS dispatch.")
         else:
-            if st.button(f"🚀 Transmit Clean Shipment to {tms_target}", type="primary", use_container_width=True):
-                with st.status("Transmitting dossier payload to TMS...", expanded=True) as status:
-                    st.write("Connecting to TMS REST API Gateway...")
-                    st.write(f"Generating CargoWise eDocs envelope for `{inv.get('shipment_reference')}`...")
-                    st.write("Payload validated against IATA Cargo-XML standard...")
-                    status.update(label="✅ Shipment Successfully Dispatched to TMS!", state="complete", expanded=False)
+            if st.button(f"🚀 Transmit Clean Shipment to {tms_target.split(' ')[0]}", type="primary", use_container_width=True):
+                with st.status(f"Transmitting dossier payload to {tms_target}...", expanded=True) as status:
+                    st.write(f"Connecting to **{selected_cfg['endpoint']}**...")
+                    st.write(f"Validating payload against **{selected_cfg['standard']}**...")
+                    st.write(f"Acquiring carrier booking confirmation for `{awb.get('awb_number')}`...")
+                    status.update(label=f"✅ Successfully Dispatched to {tms_target.split(' ')[0]}!", state="complete", expanded=False)
                 
-                st.success(f"Dossier `{inv.get('shipment_reference')}` booked and synchronized with {tms_target}.")
+                st.success(f"Dossier `{inv.get('shipment_reference')}` successfully synchronized with {tms_target}.")
                 st.json({
-                    "tms_status": "COMMITTED",
-                    "tms_record_id": f"CW-{inv.get('shipment_reference')}",
-                    "assigned_booking": awb.get("awb_number"),
+                    "tms_gateway": tms_target,
+                    "transmission_status": "COMMITTED_200_OK",
+                    "tms_record_id": f"{selected_cfg['prefix']}{inv.get('shipment_reference')}",
+                    "assigned_awb": awb.get("awb_number"),
                     "operator_signoff": "VERIFIED_BY_HUMAN_IN_THE_LOOP"
                 })
+                
+    with col_e2:
+        st.markdown(f"#### 3. Real-Time API Payload Preview ({selected_cfg['standard']})")
+        st.caption(f"Endpoint: `{selected_cfg['endpoint']}`")
+        if selected_cfg["format"] == "xml":
+            st.code(selected_cfg["payload"], language="xml")
+        else:
+            st.code(selected_cfg["payload"], language="json")
